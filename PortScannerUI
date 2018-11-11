@@ -1,0 +1,169 @@
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Date;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.awt.Color;
+import java.awt.SystemColor;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.BevelBorder;
+import javax.swing.border.SoftBevelBorder;
+import javax.swing.filechooser.FileSystemView;
+
+public class PortScannerUI extends JFrame {//PortScannerUI类————UI
+	private static final long serialVersionUID = 1L;
+	private JLayeredPane contentPane;
+	JTextArea textArea_List = new JTextArea();
+	JTextArea textArea_Info = new JTextArea();
+	JFileChooser jfc = new JFileChooser();
+	File newFile=null;
+
+	public static void main(String[] args) {//窗体
+		PortScannerUI frame = new PortScannerUI();
+		frame.setVisible(true);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public PortScannerUI() {
+		PortScanner portScanner = new PortScanner();
+		portScanner.ui = this;
+		//设置窗体属性
+		setBackground(SystemColor.controlHighlight);
+		setTitle("\u89C6\u7A97");
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setBounds(100, 100, 638, 436);
+		contentPane = new JLayeredPane();
+		contentPane.setBackground(new Color(192, 192, 192));
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		setContentPane(contentPane);
+		contentPane.setLayout(null);
+
+		JComboBox comboBox = new JComboBox();//下拉选择框-获取地址
+		comboBox.setToolTipText("IP\u5730\u5740");
+		comboBox.setFont(new Font("宋体", Font.PLAIN, 15));
+		comboBox.setVerifyInputWhenFocusTarget(false);
+		comboBox.setEditable(true);
+		comboBox.setModel(new DefaultComboBoxModel(new String[] { "127.0.0.1" }));
+		comboBox.setBounds(10, 24, 164, 24);
+		contentPane.add(comboBox);
+
+		JSpinner spinner_begin = new JSpinner();//数字选择-开始端口
+		spinner_begin.setToolTipText("\u5F00\u59CB\u7AEF\u53E3");
+		spinner_begin.setModel(new SpinnerNumberModel(1, 1, 65535, 1));
+		spinner_begin.setFont(new Font("SimSun", Font.PLAIN, 15));
+		spinner_begin.setBounds(180, 24, 104, 24);
+		contentPane.add(spinner_begin);
+
+		JSpinner spinner_end = new JSpinner();//数字选择-结束端口
+		spinner_end.setToolTipText("\u7ED3\u675F\u7AEF\u53E3");
+		spinner_end.setFont(new Font("宋体", Font.PLAIN, 15));
+		spinner_end.setModel(new SpinnerNumberModel(1024, 1, 65535, 1));
+		spinner_end.setBounds(287, 24, 97, 24);
+		contentPane.add(spinner_end);
+
+		JTextField textField = new JTextField();//文本框-文件路径
+		textField.setToolTipText("\u6587\u4EF6\u8DEF\u5F84\uFF0C\u9009\u6587\u4EF6\u5939\u540D");
+		textField.setBounds(64, 52, 437, 24);
+		contentPane.add(textField);
+		textField.setColumns(10);
+
+		JButton btnStartTheScan = new JButton("start the scan");//开始按钮
+		btnStartTheScan.setToolTipText("\u5F00\u59CB");
+		btnStartTheScan.setAlignmentY(Component.TOP_ALIGNMENT);
+		btnStartTheScan.setFont(new Font("Microsoft YaHei UI", Font.PLAIN, 12));
+		btnStartTheScan.addActionListener(new ActionListener() {//监听
+			public void actionPerformed(ActionEvent arg0) {
+				portScanner.host = (String) comboBox.getSelectedItem();
+				portScanner.startPort = (int) spinner_begin.getValue();
+				portScanner.endPort = (int) spinner_end.getValue();
+				textArea_Info.append("Host:" + portScanner.host + "\n" + "Scanning from port " + portScanner.startPort
+						+ " to port " + portScanner.endPort + "\n");
+				portScanner.numOfThreads = (portScanner.endPort - portScanner.startPort > 200) ? 200
+						: (portScanner.endPort - portScanner.startPort);
+				portScanner.start();
+			}
+		});
+		btnStartTheScan.setBounds(388, 23, 113, 27);
+		contentPane.add(btnStartTheScan);
+
+		JCheckBox chckbxLogToFile = new JCheckBox("Log to file");//文件选择框-勾选是否存到文件
+		chckbxLogToFile.setToolTipText("\u5B58\u5230\u6587\u4EF6");
+		chckbxLogToFile.setBackground(new Color(240, 240, 240));
+		chckbxLogToFile.setFont(new Font("宋体", Font.PLAIN, 13));
+		chckbxLogToFile.setBounds(500, 51, 113, 27);
+		contentPane.add(chckbxLogToFile);
+
+		JButton btnStopTheScan = new JButton("stop the scan");//结束
+		btnStopTheScan.setToolTipText("\u505C\u6B62 \u4FDD\u5B58 \u9000\u51FA");
+		btnStopTheScan.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {//监听-同时检查文件选择框勾选
+				if (chckbxLogToFile.isSelected() == true) {
+					try {
+						FileWriter out = new FileWriter(newFile);
+						out.write(textArea_Info.getText().replaceAll("\n", "\r\n"));
+						out.close();
+					} catch (Exception e1) {
+					}
+				}
+				portScanner.stop();
+			}
+		});
+		btnStopTheScan.setFont(new Font("Microsoft YaHei UI", Font.PLAIN, 12));
+		btnStopTheScan.setBounds(500, 23, 113, 27);
+		contentPane.add(btnStopTheScan);
+
+		JButton btnFile = new JButton("File");//文件按钮-弹出文件目录选择
+		btnFile.setToolTipText("\u9009\u62E9\u6587\u4EF6");
+		btnFile.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				FileSystemView fsv = FileSystemView.getFileSystemView();
+				jfc.setCurrentDirectory(fsv.getHomeDirectory());
+				jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+				jfc.showDialog(new JLabel(), "确定");
+				textField.setText(jfc.getSelectedFile().getAbsolutePath());
+				String filename = "PortScanner "+new Date().toString().replaceAll(":", " ");
+				newFile=new File(jfc.getSelectedFile().getAbsolutePath(),filename);
+				try {
+					boolean bool = newFile.createNewFile();
+				} catch (IOException e) {
+				}
+			}
+		});
+		btnFile.setBackground(Color.LIGHT_GRAY);
+		btnFile.setFont(new Font("Microsoft YaHei UI", Font.PLAIN, 12));
+		btnFile.setHorizontalAlignment(SwingConstants.LEFT);
+		btnFile.setBounds(8, 51, 53, 27);
+		contentPane.add(btnFile);
+
+		JLabel lblOpenPort = new JLabel(
+				"                      Host IP:                      |       Open port:       |                Service:    ");
+		lblOpenPort.setBorder(new SoftBevelBorder(BevelBorder.LOWERED, SystemColor.textInactiveText,
+				SystemColor.textInactiveText, SystemColor.textInactiveText, SystemColor.textInactiveText));
+		lblOpenPort.setHorizontalAlignment(SwingConstants.LEFT);
+		lblOpenPort.setBackground(Color.WHITE);
+		lblOpenPort.setBounds(10, 82, 603, 23);
+		contentPane.add(lblOpenPort);
+
+		JScrollPane scrollPane_List = new JScrollPane();//扫描信息列表框
+		scrollPane_List.setBounds(10, 109, 603, 126);
+		contentPane.add(scrollPane_List);
+		scrollPane_List.setViewportView(textArea_List);
+		textArea_List.setEditable(false);
+
+		JScrollPane scrollPane_Info = new JScrollPane();//扫描信息框
+		
+		scrollPane_Info.setBounds(10, 248, 603, 126);
+		contentPane.add(scrollPane_Info);
+		textArea_Info.setWrapStyleWord(true);
+		textArea_Info.setLineWrap(true);
+		textArea_Info.setForeground(Color.GREEN);
+		textArea_Info.setBackground(Color.BLACK);
+		textArea_Info.setEditable(false);
+		scrollPane_Info.setViewportView(textArea_Info);
+	}
+}
